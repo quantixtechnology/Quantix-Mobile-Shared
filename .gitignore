@@ -1,0 +1,19 @@
+# Dart / Flutter
+.dart_tool/
+build/
+.pub-cache/
+.pub/
+**/doc/api/
+
+# Generated (committed intentionally for downstream consumers)
+# lib/branding/brand_config.freezed.dart
+# lib/branding/brand_config.g.dart
+
+# macOS
+.DS_Store
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
