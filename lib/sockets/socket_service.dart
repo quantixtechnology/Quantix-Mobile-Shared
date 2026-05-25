@@ -32,6 +32,14 @@ class SocketService {
   void _onOrderStatusChanged(dynamic data) {}
   void _onNewNotification(dynamic data) {}
 
+  void subscribe(String event, void Function(dynamic) handler) {
+    _socket?.on(event, handler);
+  }
+
+  void send(String event, dynamic data) {
+    _socket?.emit(event, data);
+  }
+
   void disconnect() {
     _socket?.disconnect();
     _socket?.dispose();
