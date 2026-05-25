@@ -1,6 +1,16 @@
 library quantix_shared;
 
 export 'api/api_client.dart';
+export 'models/address_model.dart';
+export 'models/cart_item_model.dart';
+export 'models/category_model.dart';
+export 'models/order_model.dart';
+export 'models/product_model.dart';
+export 'repositories/admin_repository.dart';
+export 'repositories/cart_repository.dart';
+export 'repositories/catalog_repository.dart';
+export 'repositories/delivery_repository.dart';
+export 'repositories/order_repository.dart';
 export 'auth/auth_service.dart';
 export 'auth/auth_state.dart';
 export 'auth/user_model.dart';
