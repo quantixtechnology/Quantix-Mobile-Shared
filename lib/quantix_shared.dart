@@ -31,3 +31,5 @@ export 'sockets/socket_service.dart';
 export 'storage/secure_storage.dart';
 export 'theme/app_theme.dart';
 export 'widgets/app_scaffold.dart';
+export 'notifications/fcm_service.dart';
+export 'analytics/analytics_service.dart';
