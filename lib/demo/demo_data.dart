@@ -91,7 +91,7 @@ abstract final class DemoData {
           id: 'CUS-BUS-202605-0001-000001',
           name: 'Rita Khan',
           phone: '',
-          email: 'rita.khan@example.com',
+          email: 'antoinetteritap@gmail.com',
           role: UserRole.customer,
           businessId: 'BUS-202605-0001',
         ),
