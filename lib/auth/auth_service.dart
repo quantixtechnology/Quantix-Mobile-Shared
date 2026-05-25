@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
+import '../demo/demo_data.dart';
 import '../exceptions/app_exception.dart';
 import '../storage/secure_storage.dart';
 import 'user_model.dart';
@@ -11,12 +12,20 @@ class AuthService {
 
   AuthService(this._api, this._storage);
 
-  // ── Customer: phone → OTP ───────────────────────────────────────────────
+  // ── Customer: email → OTP ───────────────────────────────────────────────
 
-  Future<String> requestOtp(String phone) async {
+  Future<String> requestEmailOtp(String email) async {
+    if (kUseDemoData) {
+      final normalised = email.trim().toLowerCase();
+      final found = DemoData.customers.any(
+        (c) => c.email?.toLowerCase() == normalised,
+      );
+      if (!found) throw const ValidationException('No account found for this email');
+      return 'demo_session_$normalised';
+    }
     try {
-      final res = await _api.dio.post('/auth/otp/request', data: {
-        'phone': phone,
+      final res = await _api.dio.post('/auth/otp/email/request', data: {
+        'email': email.trim(),
         'businessId': _api.tenantId,
       });
       return res.data['sessionToken'] as String;
@@ -26,6 +35,19 @@ class AuthService {
   }
 
   Future<UserModel> verifyOtp(String sessionToken, String code) async {
+    if (kUseDemoData && sessionToken.startsWith('demo_session_')) {
+      final email = sessionToken.substring('demo_session_'.length);
+      final user = DemoData.customers.firstWhere(
+        (c) => c.email?.toLowerCase() == email,
+        orElse: () => throw const ValidationException('Account not found'),
+      );
+      await _storeTokens({
+        'accessToken': 'demo_token_${user.id}',
+        'refreshToken': 'demo_refresh_${user.id}',
+        'user': user.toJson(),
+      });
+      return user;
+    }
     try {
       final res = await _api.dio.post('/auth/otp/verify', data: {
         'sessionToken': sessionToken,
@@ -64,6 +86,17 @@ class AuthService {
   Future<UserModel?> restoreSession() async {
     final token = await _storage.getToken();
     if (token == null) return null;
+
+    if (kUseDemoData && token.startsWith('demo_token_')) {
+      final userId = token.substring('demo_token_'.length);
+      try {
+        return DemoData.customers.firstWhere((c) => c.id == userId);
+      } catch (_) {
+        await _storage.clearAll();
+        return null;
+      }
+    }
+
     try {
       final res = await _api.dio.get('/auth/me');
       return UserModel.fromJson(res.data as Map<String, dynamic>);

@@ -7,6 +7,7 @@ class AuthState {
   final String? error;
   final UserModel? user;
   final String? pendingSessionToken;
+  final String? pendingEmail;
 
   const AuthState({
     this.isAuthenticated = false,
@@ -15,6 +16,7 @@ class AuthState {
     this.error,
     this.user,
     this.pendingSessionToken,
+    this.pendingEmail,
   });
 
   bool get requiresOtp => pendingSessionToken != null && !isAuthenticated;
@@ -28,6 +30,7 @@ class AuthState {
     UserModel? user,
     String? pendingSessionToken,
     bool clearPendingSession = false,
+    String? pendingEmail,
   }) =>
       AuthState(
         isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -38,5 +41,6 @@ class AuthState {
         pendingSessionToken: clearPendingSession
             ? null
             : (pendingSessionToken ?? this.pendingSessionToken),
+        pendingEmail: pendingEmail ?? this.pendingEmail,
       );
 }

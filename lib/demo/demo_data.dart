@@ -86,6 +86,15 @@ abstract final class DemoData {
             email: 'sara@example.com', role: UserRole.customer, businessId: 'QTX001'),
         const UserModel(id: 'usr_003', name: 'Zain Malik', phone: '+92-333-1112233',
             role: UserRole.customer, businessId: 'QTX001'),
+        // Arbaz Fresh Meat — existing customer
+        const UserModel(
+          id: 'CUS-BUS-202605-0001-000001',
+          name: 'Rita Khan',
+          phone: '',
+          email: 'rita.khan@example.com',
+          role: UserRole.customer,
+          businessId: 'BUS-202605-0001',
+        ),
       ];
 
   static Map<String, dynamic> get adminStats => {
