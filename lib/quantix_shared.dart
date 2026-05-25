@@ -1,6 +1,9 @@
 library quantix_shared;
 
 export 'api/api_client.dart';
+export 'auth/auth_service.dart';
+export 'auth/auth_state.dart';
+export 'auth/user_model.dart';
 export 'branding/brand_assets.dart';
 export 'branding/brand_config.dart';
 export 'branding/brand_loader.dart';

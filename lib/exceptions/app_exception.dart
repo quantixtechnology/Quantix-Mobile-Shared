@@ -15,3 +15,15 @@ class NetworkException extends AppException {
 class UnauthorizedException extends AppException {
   const UnauthorizedException() : super('Unauthorized', statusCode: 401);
 }
+
+class ValidationException extends AppException {
+  const ValidationException(super.message) : super(statusCode: 422);
+}
+
+class ServerException extends AppException {
+  const ServerException(super.message, {super.statusCode});
+}
+
+class TenantException extends AppException {
+  const TenantException(super.message) : super(statusCode: 403);
+}
