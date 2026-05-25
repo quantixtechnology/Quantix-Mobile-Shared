@@ -113,6 +113,35 @@ class AuthService {
     }
   }
 
+  // ── Rider / Admin: email + password ─────────────────────────────────────
+
+  Future<UserModel> loginWithPassword({
+    required String email,
+    required String password,
+    required UserRole role,
+  }) async {
+    debugPrint('[AUTH] POST /api/core/auth/login email=$email role=${role.name}');
+    try {
+      final res = await _api.dio.post('/api/core/auth/login', data: {
+        'email': email,
+        'password': password,
+        'role': role.name,
+        'businessId': _api.tenantId,
+      });
+      final body = res.data as Map<String, dynamic>;
+      if (body['success'] != true) {
+        throw ValidationException(body['error'] as String? ?? 'Login failed');
+      }
+      final data = body['data'] as Map<String, dynamic>;
+      final token = data['token'] as String;
+      final userJson = data['user'] as Map<String, dynamic>;
+      await _storeTokens(token: token, userId: userJson['id'] as String);
+      return UserModel.fromBackend(userJson, businessId: _api.tenantId);
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    }
+  }
+
   // ── Logout ───────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
