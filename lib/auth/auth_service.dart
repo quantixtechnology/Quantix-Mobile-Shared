@@ -15,7 +15,7 @@ class AuthService {
 
   // ── Customer: email → OTP ───────────────────────────────────────────────
 
-  Future<void> requestEmailOtp(String email) async {
+  Future<String?> requestEmailOtp(String email) async {
     debugPrint('[AUTH] POST /api/core/auth/send-otp email=$email');
     try {
       final res = await _api.dio.post('/api/core/auth/send-otp', data: {
@@ -27,6 +27,9 @@ class AuthService {
       if (body['success'] != true) {
         throw ValidationException(body['error'] as String? ?? 'Failed to send OTP');
       }
+      final devOtp = body['devOtp'] as String?;
+      debugPrint('[AUTH] send-otp devOtp=${devOtp ?? 'null (EMAIL mode)'}');
+      return devOtp;
     } on DioException catch (e) {
       debugPrint('[AUTH] send-otp DioException: ${e.response?.statusCode} ${e.response?.data}');
       throw _mapDioError(e);
