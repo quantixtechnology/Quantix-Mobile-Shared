@@ -27,3 +27,7 @@ class ServerException extends AppException {
 class TenantException extends AppException {
   const TenantException(super.message) : super(statusCode: 403);
 }
+
+class OfflineException extends AppException {
+  const OfflineException() : super('No internet connection', statusCode: 0);
+}

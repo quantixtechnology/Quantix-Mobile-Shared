@@ -1,38 +1,71 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/cart_item_model.dart';
 import '../models/product_model.dart';
 
+const _kCartBox = 'cart_box';
+const _kCartKey = 'cart_items';
+
 class CartRepository {
-  final List<CartItemModel> _items = [];
+  final Box _box;
 
-  List<CartItemModel> get items => List.unmodifiable(_items);
+  CartRepository(this._box);
 
-  double get subtotal => _items.fold(0, (sum, i) => sum + i.subtotal);
+  List<CartItemModel> get items {
+    final raw = _box.get(_kCartKey) as String?;
+    if (raw == null) return [];
+    final list = jsonDecode(raw) as List<dynamic>;
+    return list.map((e) {
+      final m = e as Map<String, dynamic>;
+      return CartItemModel(
+        product: ProductModel.fromJson(m['product'] as Map<String, dynamic>),
+        quantity: m['quantity'] as int,
+      );
+    }).toList();
+  }
 
-  void addItem(ProductModel product) {
-    final idx = _items.indexWhere((i) => i.product.id == product.id);
+  Future<void> _save(List<CartItemModel> items) async {
+    final encoded = jsonEncode(items
+        .map((i) => {'product': i.product.toJson(), 'quantity': i.quantity})
+        .toList());
+    await _box.put(_kCartKey, encoded);
+  }
+
+  Future<void> addItem(ProductModel product) async {
+    final current = items;
+    final idx = current.indexWhere((i) => i.product.id == product.id);
     if (idx >= 0) {
-      _items[idx] = _items[idx].copyWith(quantity: _items[idx].quantity + 1);
+      current[idx] = current[idx].copyWith(quantity: current[idx].quantity + 1);
     } else {
-      _items.add(CartItemModel(product: product, quantity: 1));
+      current.add(CartItemModel(product: product, quantity: 1));
     }
+    await _save(current);
   }
 
-  void removeItem(String productId) {
-    _items.removeWhere((i) => i.product.id == productId);
+  Future<void> removeItem(String productId) async {
+    final current = items..removeWhere((i) => i.product.id == productId);
+    await _save(current);
   }
 
-  void decrementItem(String productId) {
-    final idx = _items.indexWhere((i) => i.product.id == productId);
+  Future<void> decrementItem(String productId) async {
+    final current = items;
+    final idx = current.indexWhere((i) => i.product.id == productId);
     if (idx < 0) return;
-    if (_items[idx].quantity <= 1) {
-      _items.removeAt(idx);
+    if (current[idx].quantity <= 1) {
+      current.removeAt(idx);
     } else {
-      _items[idx] = _items[idx].copyWith(quantity: _items[idx].quantity - 1);
+      current[idx] = current[idx].copyWith(quantity: current[idx].quantity - 1);
     }
+    await _save(current);
   }
 
-  void clear() => _items.clear();
+  Future<void> clear() => _box.delete(_kCartKey);
 }
 
-final cartRepositoryProvider = Provider<CartRepository>((ref) => CartRepository());
+final cartRepositoryProvider = Provider<CartRepository>((ref) {
+  final box = Hive.box(_kCartBox);
+  return CartRepository(box);
+});
+
+Future<void> openCartBox() => Hive.openBox(_kCartBox);
