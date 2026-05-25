@@ -3,7 +3,7 @@ import 'brand_config.dart';
 import 'brand_assets.dart';
 import 'feature_flags.dart';
 
-const appFlavor = String.fromEnvironment('FLAVOR', defaultValue: 'freshmart');
+const appFlavor = String.fromEnvironment('FLAVOR', defaultValue: 'quantix');
 
 final brandConfigProvider = Provider<BrandConfig>((ref) {
   throw UnimplementedError('brandConfigProvider must be overridden in ProviderScope');
