@@ -19,7 +19,7 @@ class AuthState {
     this.pendingEmail,
   });
 
-  bool get requiresOtp => pendingSessionToken != null && !isAuthenticated;
+  bool get requiresOtp => pendingEmail != null && !isAuthenticated;
 
   AuthState copyWith({
     bool? isAuthenticated,

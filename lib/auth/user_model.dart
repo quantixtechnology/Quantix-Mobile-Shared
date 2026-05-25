@@ -17,6 +17,15 @@ class UserModel {
     required this.businessId,
   });
 
+  factory UserModel.fromBackend(Map<String, dynamic> json, {required String businessId}) => UserModel(
+        id: json['id'] as String,
+        name: json['name'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        email: json['email'] as String?,
+        role: UserRole.customer,
+        businessId: businessId,
+      );
+
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
         id: json['id'] as String,
         name: json['name'] as String,
