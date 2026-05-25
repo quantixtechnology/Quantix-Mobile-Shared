@@ -34,16 +34,22 @@ class AuthService {
   }
 
   Future<UserModel> verifyOtp(String email, String code) async {
-    debugPrint('[AUTH] POST /api/core/auth/verify-otp email=$email code=$code');
+    final effectiveUrl = '${_api.dio.options.baseUrl}/api/core/auth/verify-otp';
+    final payload = {'email': email.trim(), 'code': code.trim(), 'channel': 'EMAIL_OTP'};
+    debugPrint('[VERIFY] START email=$email code=$code');
+    debugPrint('[VERIFY] API URL: $effectiveUrl');
+    debugPrint('[VERIFY] BODY: $payload');
     try {
-      final res = await _api.dio.post('/api/core/auth/verify-otp', data: {
-        'email': email.trim(),
-        'code': code.trim(),
-        'channel': 'EMAIL_OTP',
-      });
-      debugPrint('[AUTH] verify-otp → status=${res.statusCode}');
+      final res = await _api.dio.post(
+        '/api/core/auth/verify-otp',
+        data: payload,
+        options: Options(receiveTimeout: const Duration(seconds: 10)),
+      );
+      debugPrint('[VERIFY] RESPONSE status=${res.statusCode}');
+      debugPrint('[VERIFY] RESPONSE body=${res.data}');
       final body = res.data as Map<String, dynamic>;
       if (body['success'] != true) {
+        debugPrint('[VERIFY] success=false error=${body['error']}');
         throw ValidationException(body['error'] as String? ?? 'Invalid OTP');
       }
       final data = body['data'] as Map<String, dynamic>;
@@ -54,11 +60,17 @@ class AuthService {
           ? (businesses[0] as Map<String, dynamic>)['businessId'] as String? ?? _api.tenantId
           : _api.tenantId;
       await _storeTokens(token: token, userId: userJson['id'] as String);
-      debugPrint('[AUTH] verify-otp authenticated → ${userJson['name']} (${userJson['id']})');
+      debugPrint('[VERIFY] PARSED USER: ${userJson['name']} (${userJson['id']}) businessId=$businessId');
+      debugPrint('[VERIFY] NAVIGATION TARGET: /home');
       return UserModel.fromBackend(userJson, businessId: businessId);
     } on DioException catch (e) {
-      debugPrint('[AUTH] verify-otp DioException: ${e.response?.statusCode} ${e.response?.data}');
+      debugPrint('[VERIFY] DioException type=${e.type} status=${e.response?.statusCode} body=${e.response?.data}');
       throw _mapDioError(e);
+    } catch (e, st) {
+      debugPrint('[VERIFY] Unexpected error: $e');
+      debugPrint('[VERIFY] Stacktrace: $st');
+      if (e is AppException) rethrow;
+      throw ServerException('Verification failed: ${e.runtimeType}');
     }
   }
 
