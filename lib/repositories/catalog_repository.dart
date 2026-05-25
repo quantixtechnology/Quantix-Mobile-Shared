@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
-import '../demo/demo_data.dart';
+import '../branding/brand_provider.dart';
 import '../exceptions/app_exception.dart';
 import '../models/category_model.dart';
 import '../models/product_model.dart';
@@ -9,20 +10,28 @@ import '../utils/error_mapper.dart';
 
 class CatalogRepository {
   final ApiClient _api;
-  CatalogRepository(this._api);
+  final String _businessId;
+
+  CatalogRepository(this._api, {required String businessId})
+      : _businessId = businessId;
 
   Future<List<CategoryModel>> getCategories() async {
-    if (kUseDemoData) return DemoData.categories;
+    debugPrint('[PRODUCTS] getCategories businessId=$_businessId endpoint=/api/core/categories');
     try {
-      final res = await _api.dio.get('/categories');
-      final list = res.data as List<dynamic>;
-      return list
+      final res = await _api.dio.get(
+        '/api/core/categories',
+        queryParameters: {'businessId': _businessId},
+      );
+      final data = res.data as Map<String, dynamic>;
+      final list = data['data'] as List<dynamic>;
+      final categories = list
           .map((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
           .toList();
+      debugPrint('[PRODUCTS] getCategories count=${categories.length} response=OK');
+      return categories;
     } on DioException catch (e) {
-      final err = mapDioError(e);
-      if (err is OfflineException) return DemoData.categories;
-      throw err;
+      debugPrint('[PRODUCTS] getCategories error: ${e.type} ${e.response?.statusCode}');
+      throw mapDioError(e);
     }
   }
 
@@ -32,59 +41,56 @@ class CatalogRepository {
     int page = 1,
     int limit = 20,
   }) async {
-    if (kUseDemoData) return _filterDemo(categoryId, search);
+    debugPrint(
+      '[PRODUCTS] getProducts businessId=$_businessId categoryId=${categoryId ?? "all"} '
+      'search=${search ?? ""} page=$page limit=$limit endpoint=/api/core/products',
+    );
     try {
-      final params = <String, dynamic>{'page': page, 'limit': limit};
-      if (categoryId case final id?) params['category'] = id;
-      if (search case final s? when s.isNotEmpty) params['search'] = s;
-      final res = await _api.dio.get('/products', queryParameters: params);
+      final params = <String, dynamic>{
+        'businessId': _businessId,
+        'page': page,
+        'limit': limit,
+      };
+      if (categoryId != null) params['categoryId'] = categoryId;
+      if (search != null && search.isNotEmpty) params['search'] = search;
+
+      final res = await _api.dio.get(
+        '/api/core/products',
+        queryParameters: params,
+      );
       final data = res.data as Map<String, dynamic>;
-      final items = data['items'] as List<dynamic>;
-      return items
+      final items = (data['data'] as Map<String, dynamic>)['items'] as List<dynamic>;
+      final products = items
           .map((e) => ProductModel.fromJson(e as Map<String, dynamic>))
           .toList();
+      debugPrint('[PRODUCTS] getProducts count=${products.length} response=OK');
+      return products;
     } on DioException catch (e) {
-      final err = mapDioError(e);
-      if (err is OfflineException) return _filterDemo(categoryId, search);
-      throw err;
+      debugPrint('[PRODUCTS] getProducts error: ${e.type} ${e.response?.statusCode}');
+      throw mapDioError(e);
     }
   }
 
   Future<ProductModel> getProduct(String id) async {
-    if (kUseDemoData) {
-      return DemoData.products.firstWhere(
-        (p) => p.id == id,
-        orElse: () => DemoData.products.first,
-      );
-    }
+    debugPrint('[PRODUCTS] getProduct id=$id businessId=$_businessId');
     try {
-      final res = await _api.dio.get('/products/$id');
-      return ProductModel.fromJson(res.data as Map<String, dynamic>);
+      final res = await _api.dio.get(
+        '/api/core/products/$id',
+        queryParameters: {'businessId': _businessId},
+      );
+      final data = res.data as Map<String, dynamic>;
+      final product = ProductModel.fromJson(data['data'] as Map<String, dynamic>);
+      debugPrint('[PRODUCTS] getProduct response=OK name=${product.name}');
+      return product;
     } on DioException catch (e) {
-      final err = mapDioError(e);
-      if (err is OfflineException) {
-        return DemoData.products.firstWhere(
-          (p) => p.id == id,
-          orElse: () => DemoData.products.first,
-        );
-      }
-      throw err;
+      debugPrint('[PRODUCTS] getProduct error: ${e.type} ${e.response?.statusCode}');
+      throw mapDioError(e);
     }
-  }
-
-  List<ProductModel> _filterDemo(String? categoryId, String? search) {
-    var items = DemoData.products;
-    if (categoryId != null) {
-      items = items.where((p) => p.category == categoryId).toList();
-    }
-    if (search != null && search.isNotEmpty) {
-      final q = search.toLowerCase();
-      items = items.where((p) => p.name.toLowerCase().contains(q)).toList();
-    }
-    return items;
   }
 }
 
 final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
-  return CatalogRepository(ref.watch(apiClientProvider));
+  final api = ref.watch(apiClientProvider);
+  final brand = ref.watch(brandConfigProvider);
+  return CatalogRepository(api, businessId: brand.businessId);
 });
