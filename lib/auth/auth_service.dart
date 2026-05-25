@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../demo/demo_data.dart';
@@ -15,14 +16,21 @@ class AuthService {
   // ── Customer: email → OTP ───────────────────────────────────────────────
 
   Future<String> requestEmailOtp(String email) async {
+    debugPrint('[AUTH] requestEmailOtp USE_DEMO_DATA=$kUseDemoData');
     if (kUseDemoData) {
       final normalised = email.trim().toLowerCase();
+      debugPrint('[AUTH] MODE=DEMO EMAIL=$normalised');
       final found = DemoData.customers.any(
         (c) => c.email?.toLowerCase() == normalised,
       );
-      if (!found) throw const ValidationException('No account found for this email');
+      if (!found) {
+        debugPrint('[AUTH] DEMO email not found in DemoData');
+        throw const ValidationException('No account found for this email');
+      }
+      debugPrint('[AUTH] DEMO OTP issued → demo_session_$normalised');
       return 'demo_session_$normalised';
     }
+    debugPrint('[AUTH] MODE=API → POST /auth/otp/email/request');
     try {
       final res = await _api.dio.post('/auth/otp/email/request', data: {
         'email': email.trim(),
@@ -35,8 +43,10 @@ class AuthService {
   }
 
   Future<UserModel> verifyOtp(String sessionToken, String code) async {
+    debugPrint('[AUTH] verifyOtp USE_DEMO_DATA=$kUseDemoData token=${sessionToken.substring(0, sessionToken.length.clamp(0, 20))}...');
     if (kUseDemoData && sessionToken.startsWith('demo_session_')) {
       final email = sessionToken.substring('demo_session_'.length);
+      debugPrint('[AUTH] DEMO verifyOtp EMAIL=$email');
       final user = DemoData.customers.firstWhere(
         (c) => c.email?.toLowerCase() == email,
         orElse: () => throw const ValidationException('Account not found'),
@@ -46,8 +56,10 @@ class AuthService {
         'refreshToken': 'demo_refresh_${user.id}',
         'user': user.toJson(),
       });
+      debugPrint('[AUTH] DEMO authenticated → ${user.name} (${user.id})');
       return user;
     }
+    debugPrint('[AUTH] MODE=API → POST /auth/otp/verify');
     try {
       final res = await _api.dio.post('/auth/otp/verify', data: {
         'sessionToken': sessionToken,
@@ -85,18 +97,23 @@ class AuthService {
 
   Future<UserModel?> restoreSession() async {
     final token = await _storage.getToken();
+    debugPrint('[AUTH] restoreSession USE_DEMO_DATA=$kUseDemoData hasToken=${token != null}');
     if (token == null) return null;
 
     if (kUseDemoData && token.startsWith('demo_token_')) {
       final userId = token.substring('demo_token_'.length);
+      debugPrint('[AUTH] DEMO restoreSession userId=$userId');
       try {
-        return DemoData.customers.firstWhere((c) => c.id == userId);
+        final user = DemoData.customers.firstWhere((c) => c.id == userId);
+        debugPrint('[AUTH] DEMO session restored → ${user.name}');
+        return user;
       } catch (_) {
         await _storage.clearAll();
         return null;
       }
     }
 
+    debugPrint('[AUTH] MODE=API → GET /auth/me');
     try {
       final res = await _api.dio.get('/auth/me');
       return UserModel.fromJson(res.data as Map<String, dynamic>);
