@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../api/api_client.dart';
 import '../storage/secure_storage.dart';
 
 // Top-level handler required by firebase_messaging for background/terminated state
@@ -47,7 +48,7 @@ Future<void> _showLocalNotification(RemoteMessage message) async {
         presentSound: true,
       ),
     ),
-    payload: message.data.toString(),
+    payload: message.data['route'] as String?,
   );
 }
 
@@ -83,7 +84,7 @@ class FcmService {
         ),
       ),
       onDidReceiveNotificationResponse: (details) {
-        _handleTap(null, details.payload);
+        _handleTap(details.payload, {});
       },
     );
 
