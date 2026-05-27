@@ -65,36 +65,6 @@ class ProductModel {
     );
   }
 
-  // Used when parsing the /api/core/storefront/products response
-  factory ProductModel.fromStorefrontJson(
-    Map<String, dynamic> json, {
-    String imageBaseUrl = '',
-  }) {
-    final images = (json['images'] as List<dynamic>?) ?? [];
-    final rawImage = images.isNotEmpty ? images[0] as String? : null;
-    String? image;
-    if (rawImage != null && rawImage.isNotEmpty) {
-      image = rawImage.startsWith('http') ? rawImage : '$imageBaseUrl$rawImage';
-    }
-
-    final stockStatus = json['stockStatus'] as String? ?? 'IN_STOCK';
-    final hasInventory = json['hasInventory'] as bool? ?? false;
-    final availableStock = (json['availableStock'] as num?)?.toInt() ?? 0;
-    final inStock = hasInventory ? availableStock > 0 : stockStatus != 'OUT_OF_STOCK';
-
-    return ProductModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String? ?? '',
-      price: (json['defaultPrice'] as num?)?.toDouble() ?? 0.0,
-      currency: json['currency'] as String? ?? 'PKR',
-      image: image,
-      category: json['categoryId'] as String? ?? '',
-      inStock: inStock,
-      stock: availableStock,
-    );
-  }
-
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
