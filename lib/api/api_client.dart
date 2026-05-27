@@ -72,7 +72,7 @@ class _AuthInterceptor extends Interceptor {
 
       // Use a fresh Dio instance to avoid interceptor loops
       final refreshDio = Dio(BaseOptions(baseUrl: AppConfig.baseUrl));
-      final res = await refreshDio.post('/auth/refresh', data: {
+      final res = await refreshDio.post('/api/core/auth/refresh', data: {
         'refreshToken': refreshToken,
       });
 

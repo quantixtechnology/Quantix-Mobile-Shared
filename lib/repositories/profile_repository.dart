@@ -14,8 +14,9 @@ class ProfileRepository {
   Future<UserModel> getProfile() async {
     if (kUseDemoData) return DemoData.customers.first;
     try {
-      final res = await _api.dio.get('/profile');
-      return UserModel.fromJson(res.data as Map<String, dynamic>);
+      final res = await _api.dio.get('/api/core/storefront/profile');
+      final body = res.data as Map<String, dynamic>;
+      return UserModel.fromJson((body['data'] as Map<String, dynamic>?) ?? body);
     } on DioException catch (e) {
       final err = mapDioError(e);
       if (err is OfflineException) return DemoData.customers.first;
@@ -29,8 +30,9 @@ class ProfileRepository {
       final body = <String, dynamic>{};
       if (name != null) body['name'] = name;
       if (email != null) body['email'] = email;
-      final res = await _api.dio.patch('/profile', data: body);
-      return UserModel.fromJson(res.data as Map<String, dynamic>);
+      final res = await _api.dio.patch('/api/core/storefront/profile', data: body);
+      final resBody = res.data as Map<String, dynamic>;
+      return UserModel.fromJson((resBody['data'] as Map<String, dynamic>?) ?? resBody);
     } on DioException catch (e) {
       throw mapDioError(e);
     }
@@ -39,8 +41,9 @@ class ProfileRepository {
   Future<List<AddressModel>> getAddresses() async {
     if (kUseDemoData) return DemoData.addresses;
     try {
-      final res = await _api.dio.get('/addresses');
-      final list = res.data as List<dynamic>;
+      final res = await _api.dio.get('/api/core/storefront/addresses');
+      final body = res.data as Map<String, dynamic>;
+      final list = (body['data'] as List<dynamic>?) ?? [];
       return list
           .map((e) => AddressModel.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -60,14 +63,15 @@ class ProfileRepository {
   }) async {
     if (kUseDemoData) return DemoData.addresses.first;
     try {
-      final res = await _api.dio.post('/addresses', data: {
+      final res = await _api.dio.post('/api/core/storefront/addresses', data: {
         'label': label,
         'line1': line1,
         'city': city,
         'lat': lat,
         'lng': lng,
       });
-      return AddressModel.fromJson(res.data as Map<String, dynamic>);
+      final body = res.data as Map<String, dynamic>;
+      return AddressModel.fromJson((body['data'] as Map<String, dynamic>?) ?? body);
     } on DioException catch (e) {
       throw mapDioError(e);
     }
@@ -76,7 +80,7 @@ class ProfileRepository {
   Future<void> deleteAddress(String id) async {
     if (kUseDemoData) return;
     try {
-      await _api.dio.delete('/addresses/$id');
+      await _api.dio.delete('/api/core/storefront/addresses/$id');
     } on DioException catch (e) {
       throw mapDioError(e);
     }

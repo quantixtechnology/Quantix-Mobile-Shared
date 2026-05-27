@@ -19,9 +19,9 @@ class OrderRepository {
     try {
       final params = <String, dynamic>{'page': page};
       if (status case final s?) params['status'] = s;
-      final res = await _api.dio.get('/orders', queryParameters: params);
+      final res = await _api.dio.get('/api/core/storefront/orders', queryParameters: params);
       final data = res.data as Map<String, dynamic>;
-      final items = data['items'] as List<dynamic>;
+      final items = (data['data'] as List<dynamic>?) ?? (data['items'] as List<dynamic>? ?? []);
       return items
           .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -40,8 +40,9 @@ class OrderRepository {
       );
     }
     try {
-      final res = await _api.dio.get('/orders/$id');
-      return OrderModel.fromJson(res.data as Map<String, dynamic>);
+      final res = await _api.dio.get('/api/core/storefront/orders/$id');
+      final body = res.data as Map<String, dynamic>;
+      return OrderModel.fromJson((body['data'] as Map<String, dynamic>?) ?? body);
     } on DioException catch (e) {
       final err = mapDioError(e);
       if (err is OfflineException) {
@@ -76,12 +77,13 @@ class OrderRepository {
       );
     }
     try {
-      final res = await _api.dio.post('/orders', data: {
+      final res = await _api.dio.post('/api/core/storefront/orders', data: {
         'items': items,
         'addressId': addressId,
         'paymentMethod': paymentMethod,
       });
-      return OrderModel.fromJson(res.data as Map<String, dynamic>);
+      final body = res.data as Map<String, dynamic>;
+      return OrderModel.fromJson((body['data'] as Map<String, dynamic>?) ?? body);
     } on DioException catch (e) {
       throw mapDioError(e);
     }
@@ -96,8 +98,9 @@ class OrderRepository {
     }
     try {
       final res = await _api.dio
-          .patch('/orders/$id/cancel', data: {'reason': reason});
-      return OrderModel.fromJson(res.data as Map<String, dynamic>);
+          .patch('/api/core/storefront/orders/$id/cancel', data: {'reason': reason});
+      final body = res.data as Map<String, dynamic>;
+      return OrderModel.fromJson((body['data'] as Map<String, dynamic>?) ?? body);
     } on DioException catch (e) {
       throw mapDioError(e);
     }
