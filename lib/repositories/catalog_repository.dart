@@ -94,8 +94,9 @@ class CatalogRepository {
         '/api/core/storefront/products/$id',
         queryParameters: {'businessId': _businessId},
       );
-      final data = res.data as Map<String, dynamic>;
-      final rawProduct = data['data'] as Map<String, dynamic>;
+      final body = res.data as Map<String, dynamic>;
+      // Handle both {data: {...}} envelope and bare product object
+      final rawProduct = (body['data'] as Map<String, dynamic>?) ?? body;
       final product = ProductModel.fromStorefrontJson(
         rawProduct,
         currency: _currency,
@@ -106,6 +107,9 @@ class CatalogRepository {
     } on DioException catch (e) {
       debugPrint('[CATALOG_SYNC] getProduct error: ${e.type} ${e.response?.statusCode}');
       throw mapDioError(e);
+    } catch (e, st) {
+      debugPrint('[CATALOG_SYNC] getProduct unexpected error: $e\n$st');
+      rethrow;
     }
   }
 }
