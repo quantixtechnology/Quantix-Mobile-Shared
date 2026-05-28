@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class ProductModel {
   final String id;
   final String name;
@@ -8,6 +10,10 @@ class ProductModel {
   final String category;
   final bool inStock;
   final int stock;
+  final double? weight;
+  final String? unit;
+  final double? compareAtPrice;
+  final String? piecesInfo;
 
   const ProductModel({
     required this.id,
@@ -19,7 +25,18 @@ class ProductModel {
     required this.inStock,
     required this.stock,
     this.image,
+    this.weight,
+    this.unit,
+    this.compareAtPrice,
+    this.piecesInfo,
   });
+
+  String? get weightLabel {
+    if (weight == null || unit == null || unit!.isEmpty) return null;
+    final w = weight!;
+    final formatted = w % 1 == 0 ? w.toInt().toString() : w.toString();
+    return '$formatted ${unit!}';
+  }
 
   // Used for local Hive cart persistence (round-trip with toJson)
   factory ProductModel.fromJson(Map<String, dynamic> json) => ProductModel(
@@ -30,8 +47,12 @@ class ProductModel {
     currency: json['currency'] as String? ?? '',
     image: json['image'] as String?,
     category: json['category'] as String? ?? '',
-    inStock: (json['stock'] ?? json['quantity'] ?? 0) > 0,
+    inStock: ((json['stock'] as num?) ?? (json['quantity'] as num?) ?? 0) > 0,
     stock: (json['stock'] as num?)?.toInt() ?? 0,
+    weight: (json['weight'] as num?)?.toDouble(),
+    unit: json['unit'] as String?,
+    compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble(),
+    piecesInfo: json['piecesInfo'] as String?,
   );
 
   // Parses the /api/core/storefront/products response shape.
@@ -48,9 +69,31 @@ class ProductModel {
       firstImage = raw.startsWith('http') ? raw : '$imageBaseUrl$raw';
     }
 
-    final availableStock = (json['availableStock'] as num?)?.toInt() ?? 0;
+    // Resolve stock from whichever field the backend sends
+    final availableStock = (json['availableStock'] as num?)?.toInt()
+        ?? (json['quantity'] as num?)?.toInt()
+        ?? (json['stock'] as num?)?.toInt()
+        ?? (json['inventory'] as num?)?.toInt()
+        ?? (json['availableQuantity'] as num?)?.toInt()
+        ?? 0;
     final stockStatus = json['stockStatus'] as String? ?? '';
     final inStock = availableStock > 0 || stockStatus == 'IN_STOCK';
+
+    final weight = (json['weight'] as num?)?.toDouble();
+    final unit = (json['unit'] as String?) ?? (json['weightUnit'] as String?);
+    final compareAtPrice = (json['compareAtPrice'] as num?)?.toDouble()
+        ?? (json['mrp'] as num?)?.toDouble()
+        ?? (json['originalPrice'] as num?)?.toDouble();
+    final piecesInfo = (json['piecesInfo'] as String?)
+        ?? (json['variant'] as String?)
+        ?? (json['size'] as String?);
+
+    debugPrint(
+      '[PRODUCT] id=${json['id']} '
+      'stock={avail:${json['availableStock']},qty:${json['quantity']},stk:${json['stock']},inv:${json['inventory']},aqty:${json['availableQuantity']},status:${json['stockStatus']}} '
+      '→ resolved=$availableStock inStock=$inStock '
+      'weight={w:${json['weight']},u:${json['unit']},wu:${json['weightUnit']}}',
+    );
 
     return ProductModel(
       id: json['id'] as String,
@@ -62,6 +105,10 @@ class ProductModel {
       category: json['categoryId'] as String? ?? '',
       inStock: inStock,
       stock: availableStock,
+      weight: weight,
+      unit: unit,
+      compareAtPrice: compareAtPrice,
+      piecesInfo: piecesInfo,
     );
   }
 
@@ -75,5 +122,9 @@ class ProductModel {
     'category': category,
     'inStock': inStock,
     'stock': stock,
+    'weight': weight,
+    'unit': unit,
+    'compareAtPrice': compareAtPrice,
+    'piecesInfo': piecesInfo,
   };
 }
