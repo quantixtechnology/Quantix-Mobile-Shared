@@ -9,6 +9,11 @@ class AuthState {
   final String? pendingSessionToken;
   final String? pendingEmail;
   final String? devOtp;
+  // True immediately after a first-time OTP login where user has no password yet
+  final bool needsPasswordCreation;
+  // Used during forgot-password flow
+  final String? forgotPasswordResetToken;
+  final bool isForgotPasswordFlow;
 
   const AuthState({
     this.isAuthenticated = false,
@@ -19,9 +24,12 @@ class AuthState {
     this.pendingSessionToken,
     this.pendingEmail,
     this.devOtp,
+    this.needsPasswordCreation = false,
+    this.forgotPasswordResetToken,
+    this.isForgotPasswordFlow = false,
   });
 
-  bool get requiresOtp => pendingEmail != null && !isAuthenticated;
+  bool get requiresOtp => pendingEmail != null && !isAuthenticated && !isForgotPasswordFlow;
 
   AuthState copyWith({
     bool? isAuthenticated,
@@ -33,8 +41,13 @@ class AuthState {
     String? pendingSessionToken,
     bool clearPendingSession = false,
     String? pendingEmail,
+    bool clearPendingEmail = false,
     String? devOtp,
     bool clearDevOtp = false,
+    bool? needsPasswordCreation,
+    String? forgotPasswordResetToken,
+    bool clearForgotPasswordResetToken = false,
+    bool? isForgotPasswordFlow,
   }) =>
       AuthState(
         isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -45,7 +58,15 @@ class AuthState {
         pendingSessionToken: clearPendingSession
             ? null
             : (pendingSessionToken ?? this.pendingSessionToken),
-        pendingEmail: pendingEmail ?? this.pendingEmail,
+        pendingEmail:
+            clearPendingEmail ? null : (pendingEmail ?? this.pendingEmail),
         devOtp: clearDevOtp ? null : (devOtp ?? this.devOtp),
+        needsPasswordCreation:
+            needsPasswordCreation ?? this.needsPasswordCreation,
+        forgotPasswordResetToken: clearForgotPasswordResetToken
+            ? null
+            : (forgotPasswordResetToken ?? this.forgotPasswordResetToken),
+        isForgotPasswordFlow:
+            isForgotPasswordFlow ?? this.isForgotPasswordFlow,
       );
 }

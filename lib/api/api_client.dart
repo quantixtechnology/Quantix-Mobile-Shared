@@ -63,45 +63,81 @@ class _AuthInterceptor extends Interceptor {
       return;
     }
 
-    // Mark refresh in-flight so concurrent 401s don't stack
+    // Skip refresh for auth endpoints themselves (avoids loops)
+    final path = err.requestOptions.path;
+    if (path.contains('/auth/refresh') ||
+        path.contains('/auth/login') ||
+        path.contains('/auth/verify-otp') ||
+        path.contains('/auth/send-otp')) {
+      handler.next(err);
+      return;
+    }
+
     _isRefreshing = true;
+    debugPrint('[AUTH REFRESH] 401 on ${err.requestOptions.path} — attempting token refresh');
+
     try {
       final refreshToken = await _storage.getRefreshToken();
       if (refreshToken == null) {
+        debugPrint('[AUTH REFRESH] no refresh token stored — clearing auth');
         await _storage.clearAll();
         _isRefreshing = false;
-        handler.next(err);
+        handler.next(_unauthorizedError(err));
         return;
       }
 
-      // Use a fresh Dio instance to avoid interceptor loops
-      final refreshDio = Dio(BaseOptions(baseUrl: AppConfig.baseUrl));
+      final refreshDio = Dio(BaseOptions(
+        baseUrl: AppConfig.baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
+
+      debugPrint('[AUTH REFRESH] POST /api/core/auth/refresh');
       final res = await refreshDio.post('/api/core/auth/refresh', data: {
         'refreshToken': refreshToken,
       });
 
-      final newAccess = res.data['accessToken'] as String;
+      final newAccess = res.data['accessToken'] as String?
+          ?? res.data['token'] as String?;
+      if (newAccess == null) throw Exception('No accessToken in refresh response');
+
       final newRefresh = res.data['refreshToken'] as String?;
       await _storage.saveToken(newAccess);
       if (newRefresh != null) await _storage.saveRefreshToken(newRefresh);
+      debugPrint('[AUTH REFRESH] token refreshed ✓ — retrying original request');
 
-      // Retry original request with fresh token
       final opts = err.requestOptions;
       opts.headers['Authorization'] = 'Bearer $newAccess';
       final retryRes = await _dio.fetch(opts);
       handler.resolve(retryRes);
-    } catch (_) {
-      await _storage.clearAll();
-      handler.next(DioException(
-        requestOptions: err.requestOptions,
-        response: err.response,
-        error: const UnauthorizedException(),
-        type: DioExceptionType.badResponse,
-      ));
+
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      if (status == 401 || status == 403) {
+        // Refresh token itself is revoked/expired — full logout required
+        debugPrint('[AUTH REFRESH] refresh token rejected ($status) — clearing auth');
+        await _storage.clearAll();
+        handler.next(_unauthorizedError(err));
+      } else {
+        // Network error during refresh — do NOT clear tokens, let app use
+        // cached user until connectivity returns
+        debugPrint('[AUTH REFRESH] network error during refresh (${e.type}) — keeping tokens');
+        handler.next(err);
+      }
+    } catch (e) {
+      debugPrint('[AUTH REFRESH] unexpected error: $e — keeping tokens');
+      handler.next(err);
     } finally {
       _isRefreshing = false;
     }
   }
+
+  DioException _unauthorizedError(DioException original) => DioException(
+        requestOptions: original.requestOptions,
+        response: original.response,
+        error: const UnauthorizedException(),
+        type: DioExceptionType.badResponse,
+      );
 }
 
 final secureStorageProvider = Provider<SecureStorage>((ref) => SecureStorage());
