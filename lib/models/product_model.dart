@@ -14,6 +14,8 @@ class ProductModel {
   final String? unit;
   final double? compareAtPrice;
   final String? piecesInfo;
+  // Raw variant name from API (e.g. "1 Kg", "500 g") used as weight label fallback
+  final String? variantLabel;
 
   const ProductModel({
     required this.id,
@@ -29,13 +31,17 @@ class ProductModel {
     this.unit,
     this.compareAtPrice,
     this.piecesInfo,
+    this.variantLabel,
   });
 
+  // Prefer computed label from weight+unit; fall back to raw variant name
   String? get weightLabel {
-    if (weight == null || unit == null || unit!.isEmpty) return null;
-    final w = weight!;
-    final formatted = w % 1 == 0 ? w.toInt().toString() : w.toString();
-    return '$formatted ${unit!}';
+    if (weight != null && unit != null && unit!.isNotEmpty) {
+      final w = weight!;
+      final formatted = w % 1 == 0 ? w.toInt().toString() : w.toString();
+      return '$formatted ${unit!}';
+    }
+    return variantLabel;
   }
 
   // Used for local Hive cart persistence (round-trip with toJson)
@@ -53,10 +59,10 @@ class ProductModel {
     unit: json['unit'] as String?,
     compareAtPrice: (json['compareAtPrice'] as num?)?.toDouble(),
     piecesInfo: json['piecesInfo'] as String?,
+    variantLabel: json['variantLabel'] as String?,
   );
 
   // Parses the /api/core/storefront/products response shape.
-  // imageBaseUrl should be the storefront domain (e.g. https://arbazfreshmeat.quantixtechnology.in)
   factory ProductModel.fromStorefrontJson(
     Map<String, dynamic> json, {
     required String currency,
@@ -79,21 +85,36 @@ class ProductModel {
     final stockStatus = json['stockStatus'] as String? ?? '';
     final inStock = availableStock > 0 || stockStatus == 'IN_STOCK';
 
+    // Extract first variant for weight label and MRP fallback
+    final variantsList = json['variants'];
+    final firstVariant = (variantsList is List && variantsList.isNotEmpty)
+        ? variantsList.first as Map<String, dynamic>?
+        : null;
+
+    debugPrint(
+      '[PRODUCT] id=${json['id']} name=${json['name']} '
+      'stock={avail:${json['availableStock']},status:${json['stockStatus']}} → $availableStock '
+      'variants=${variantsList is List ? variantsList.length : 0} '
+      'v0={name:${firstVariant?['name']},mrp:${firstVariant?['mrp']},price:${firstVariant?['price']},sellingPrice:${firstVariant?['sellingPrice']}}',
+    );
+
     final weight = (json['weight'] as num?)?.toDouble();
     final unit = (json['unit'] as String?) ?? (json['weightUnit'] as String?);
+
+    // Variant name as weight label (e.g. "1 Kg", "500 g")
+    final variantLabel = firstVariant?['name'] as String?;
+
+    // MRP: top-level first, then first variant
     final compareAtPrice = (json['compareAtPrice'] as num?)?.toDouble()
         ?? (json['mrp'] as num?)?.toDouble()
-        ?? (json['originalPrice'] as num?)?.toDouble();
+        ?? (json['originalPrice'] as num?)?.toDouble()
+        ?? (firstVariant?['mrp'] as num?)?.toDouble()
+        ?? (firstVariant?['compareAtPrice'] as num?)?.toDouble()
+        ?? (firstVariant?['originalPrice'] as num?)?.toDouble();
+
     final piecesInfo = (json['piecesInfo'] as String?)
         ?? (json['variant'] as String?)
         ?? (json['size'] as String?);
-
-    debugPrint(
-      '[PRODUCT] id=${json['id']} '
-      'stock={avail:${json['availableStock']},qty:${json['quantity']},stk:${json['stock']},inv:${json['inventory']},aqty:${json['availableQuantity']},status:${json['stockStatus']}} '
-      '→ resolved=$availableStock inStock=$inStock '
-      'weight={w:${json['weight']},u:${json['unit']},wu:${json['weightUnit']}}',
-    );
 
     return ProductModel(
       id: json['id'] as String,
@@ -109,6 +130,7 @@ class ProductModel {
       unit: unit,
       compareAtPrice: compareAtPrice,
       piecesInfo: piecesInfo,
+      variantLabel: variantLabel,
     );
   }
 
@@ -126,5 +148,6 @@ class ProductModel {
     'unit': unit,
     'compareAtPrice': compareAtPrice,
     'piecesInfo': piecesInfo,
+    'variantLabel': variantLabel,
   };
 }
