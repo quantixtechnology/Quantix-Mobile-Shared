@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../branding/brand_provider.dart';
 import '../config/app_config.dart';
@@ -48,6 +49,9 @@ class _AuthInterceptor extends Interceptor {
     final token = await _storage.getToken();
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
+      debugPrint('[API] Bearer ✓ → ${options.method} ${options.path}');
+    } else {
+      debugPrint('[API] No token → ${options.method} ${options.path}');
     }
     handler.next(options);
   }

@@ -1,3 +1,5 @@
+import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureStorage {
@@ -11,10 +13,17 @@ class SecureStorage {
   static const _userIdKey = 'user_id';
   static const _fcmTokenKey = 'fcm_token';
 
-  Future<void> saveToken(String token) =>
-      _storage.write(key: _tokenKey, value: token);
+  Future<void> saveToken(String token) async {
+    debugPrint('[STORAGE] saveToken: ${token.length}chars [${token.substring(0, min(20, token.length))}...]');
+    await _storage.write(key: _tokenKey, value: token);
+    debugPrint('[STORAGE] saveToken: written ✓');
+  }
 
-  Future<String?> getToken() => _storage.read(key: _tokenKey);
+  Future<String?> getToken() async {
+    final token = await _storage.read(key: _tokenKey);
+    debugPrint('[STORAGE] getToken: ${token != null ? '${token.length}chars found' : 'null'}');
+    return token;
+  }
 
   Future<void> saveRefreshToken(String token) =>
       _storage.write(key: _refreshTokenKey, value: token);

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../demo/demo_data.dart';
@@ -20,15 +21,28 @@ class OrderRepository {
       final params = <String, dynamic>{'page': page};
       if (status case final s?) params['status'] = s;
       final res = await _api.dio.get('/api/core/storefront/orders', queryParameters: params);
-      final data = res.data as Map<String, dynamic>;
-      final items = (data['data'] as List<dynamic>?) ?? (data['items'] as List<dynamic>? ?? []);
+      debugPrint('[ORDERS] status=${res.statusCode} bodyType=${res.data.runtimeType} body=${res.data}');
+      // Backend may return a bare list OR a wrapped object
+      List<dynamic> items;
+      if (res.data is List) {
+        items = res.data as List<dynamic>;
+      } else {
+        final data = res.data as Map<String, dynamic>;
+        final raw = data['data'] ?? data['items'] ?? data['orders'] ?? data;
+        items = raw is List ? raw : <dynamic>[];
+      }
+      debugPrint('[ORDERS] found ${items.length} orders');
       return items
           .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
+      debugPrint('[ORDERS] DioException status=${e.response?.statusCode} body=${e.response?.data}');
       final err = mapDioError(e);
       if (err is OfflineException) return DemoData.orders;
       throw err;
+    } catch (e, st) {
+      debugPrint('[ORDERS] unexpected: $e\n$st');
+      rethrow;
     }
   }
 

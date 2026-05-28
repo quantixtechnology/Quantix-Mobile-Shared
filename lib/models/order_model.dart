@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'address_model.dart';
 
 enum OrderStatus {
@@ -86,24 +87,33 @@ class OrderModel {
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
-    final itemsJson = json['items'] as List<dynamic>? ?? [];
+    final itemsRaw = json['items'] ?? json['orderItems'] ?? [];
+    final itemsJson = itemsRaw is List ? itemsRaw : <dynamic>[];
     final riderJson = json['rider'] as Map<String, dynamic>?;
-    final addressJson = json['address'] as Map<String, dynamic>?;
+    final addressJson = (json['address'] ?? json['deliveryAddress']) as Map<String, dynamic>?;
+
+    // Backend may send total as 'total', 'totalAmount', or 'grandTotal'
+    final total = (json['total'] ?? json['totalAmount'] ?? json['grandTotal'] as num?)
+            ?.toDouble() ??
+        0.0;
+
+    // createdAt may be named differently
+    final createdAtStr = (json['createdAt'] ?? json['created_at'] ?? json['placedAt']) as String?;
+
+    debugPrint('[ORDER] parsing id=${json['id']} status=${json['status']} total=$total items=${itemsJson.length}');
 
     return OrderModel(
-      id: json['id'] as String,
+      id: json['id'] as String? ?? json['orderId'] as String? ?? '',
       status: OrderStatus.fromString(json['status'] as String? ?? 'pending'),
       items: itemsJson
           .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
           .toList(),
-      total: (json['total'] as num?)?.toDouble() ?? 0.0,
+      total: total,
       address: addressJson != null ? AddressModel.fromJson(addressJson) : null,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
+      createdAt: createdAtStr != null
+          ? DateTime.tryParse(createdAtStr) ?? DateTime.now()
           : DateTime.now(),
-      eta: json['eta'] != null
-          ? DateTime.tryParse(json['eta'] as String)
-          : null,
+      eta: json['eta'] != null ? DateTime.tryParse(json['eta'] as String) : null,
       riderId: riderJson?['id'] as String?,
       riderName: riderJson?['name'] as String?,
     );

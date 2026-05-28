@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../branding/brand_config.dart';
 import '../branding/brand_provider.dart';
-import '../exceptions/app_exception.dart';
+import '../config/app_config.dart';
 import '../models/category_model.dart';
 import '../models/product_model.dart';
 import '../utils/error_mapper.dart';
@@ -12,15 +12,14 @@ import '../utils/error_mapper.dart';
 class CatalogRepository {
   final ApiClient _api;
   final BrandConfig _brand;
-  final String _flavor;
 
-  CatalogRepository(this._api, this._brand, this._flavor);
+  CatalogRepository(this._api, this._brand);
 
   String get _businessId => _brand.businessId;
   String get _currency => _brand.currency;
-  // Image paths from storefront API are relative (/uploads/...).
-  // They are served from the tenant's storefront domain.
-  String get _imageBaseUrl => 'https://$_flavor.quantixtechnology.in';
+  // Images are served from the central API CDN — relative paths are prefixed
+  // with the API base URL so images work correctly across all tenants.
+  String get _imageBaseUrl => AppConfig.baseUrl;
 
   Future<List<CategoryModel>> getCategories() async {
     debugPrint('[CATALOG_SYNC] getCategories businessId=$_businessId endpoint=/api/core/storefront/categories');
@@ -117,6 +116,5 @@ class CatalogRepository {
 final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {
   final api = ref.watch(apiClientProvider);
   final brand = ref.watch(brandConfigProvider);
-  final flavor = ref.watch(brandFlavorProvider);
-  return CatalogRepository(api, brand, flavor);
+  return CatalogRepository(api, brand);
 });
