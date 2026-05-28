@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../auth/user_model.dart';
@@ -40,16 +41,21 @@ class ProfileRepository {
 
   Future<List<AddressModel>> getAddresses() async {
     if (kUseDemoData) return DemoData.addresses;
+    debugPrint('[PROFILE] GET /api/core/storefront/addresses');
     try {
       final res = await _api.dio.get('/api/core/storefront/addresses');
       final body = res.data as Map<String, dynamic>;
       final list = (body['data'] as List<dynamic>?) ?? [];
+      debugPrint('[PROFILE] getAddresses → ${list.length} items');
       return list
           .map((e) => AddressModel.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
+      debugPrint('[PROFILE] getAddresses DioError: status=${e.response?.statusCode} body=${e.response?.data}');
       final err = mapDioError(e);
       if (err is OfflineException) return DemoData.addresses;
+      // 404 = route not found or user has no addresses — return empty
+      if (e.response?.statusCode == 404) return [];
       throw err;
     }
   }
