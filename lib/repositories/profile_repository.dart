@@ -54,7 +54,6 @@ class ProfileRepository {
       debugPrint('[PROFILE] getAddresses DioError: status=${e.response?.statusCode} body=${e.response?.data}');
       final err = mapDioError(e);
       if (err is OfflineException) return DemoData.addresses;
-      // 404 = route not found or user has no addresses — return empty
       if (e.response?.statusCode == 404) return [];
       throw err;
     }
@@ -62,20 +61,76 @@ class ProfileRepository {
 
   Future<AddressModel> addAddress({
     required String label,
-    required String line1,
+    required String addressLine1,
+    String? addressLine2,
+    String? area,
+    String? landmark,
     required String city,
-    required double lat,
-    required double lng,
+    String state = '',
+    required String pincode,
+    String? instructions,
+    bool isDefault = false,
+    double latitude = 0.0,
+    double longitude = 0.0,
   }) async {
     if (kUseDemoData) return DemoData.addresses.first;
     try {
       final res = await _api.dio.post('/api/core/storefront/addresses', data: {
         'label': label,
-        'line1': line1,
+        'line1': addressLine1,
+        if (addressLine2?.isNotEmpty == true) 'line2': addressLine2,
+        if (area?.isNotEmpty == true) 'area': area,
+        if (landmark?.isNotEmpty == true) 'landmark': landmark,
         'city': city,
-        'lat': lat,
-        'lng': lng,
+        'state': state.isNotEmpty ? state : 'Karnataka',
+        'pincode': pincode,
+        if (instructions?.isNotEmpty == true) 'instructions': instructions,
+        'isDefault': isDefault,
+        if (latitude != 0.0) 'latitude': latitude,
+        if (longitude != 0.0) 'longitude': longitude,
       });
+      final body = res.data as Map<String, dynamic>;
+      return AddressModel.fromJson((body['data'] as Map<String, dynamic>?) ?? body);
+    } on DioException catch (e) {
+      throw mapDioError(e);
+    }
+  }
+
+  Future<AddressModel> updateAddress({
+    required String id,
+    String? label,
+    String? addressLine1,
+    String? addressLine2,
+    String? area,
+    String? landmark,
+    String? city,
+    String? state,
+    String? pincode,
+    String? instructions,
+    bool? isDefault,
+    double? latitude,
+    double? longitude,
+  }) async {
+    if (kUseDemoData) return DemoData.addresses.first;
+    try {
+      final data = <String, dynamic>{
+        if (label != null) 'label': label,
+        if (addressLine1 != null) 'line1': addressLine1,
+        if (addressLine2 != null) 'line2': addressLine2,
+        if (area != null) 'area': area,
+        if (landmark != null) 'landmark': landmark,
+        if (city != null) 'city': city,
+        if (state != null) 'state': state,
+        if (pincode != null) 'pincode': pincode,
+        if (instructions != null) 'instructions': instructions,
+        if (isDefault != null) 'isDefault': isDefault,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+      };
+      final res = await _api.dio.patch(
+        '/api/core/storefront/addresses/$id',
+        data: data,
+      );
       final body = res.data as Map<String, dynamic>;
       return AddressModel.fromJson((body['data'] as Map<String, dynamic>?) ?? body);
     } on DioException catch (e) {

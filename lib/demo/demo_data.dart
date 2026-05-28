@@ -69,13 +69,15 @@ abstract final class DemoData {
   static List<AddressModel> get addresses => [
         const AddressModel(
           id: 'addr_001', label: 'Home',
-          line1: '12-B Model Town', city: 'Lahore',
-          lat: 31.5204, lng: 74.3587,
+          addressLine1: '12-B Model Town', city: 'Lahore',
+          state: 'Punjab', pincode: '54000',
+          latitude: 31.5204, longitude: 74.3587,
         ),
         const AddressModel(
           id: 'addr_002', label: 'Office',
-          line1: 'Plot 5, Tech Park, Gulberg', city: 'Lahore',
-          lat: 31.5101, lng: 74.3360,
+          addressLine1: 'Plot 5, Tech Park', area: 'Gulberg', city: 'Lahore',
+          state: 'Punjab', pincode: '54660',
+          latitude: 31.5101, longitude: 74.3360,
         ),
       ];
 
