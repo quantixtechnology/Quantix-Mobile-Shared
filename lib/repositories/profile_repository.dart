@@ -44,8 +44,18 @@ class ProfileRepository {
     debugPrint('[PROFILE] GET /api/core/storefront/addresses');
     try {
       final res = await _api.dio.get('/api/core/storefront/addresses');
-      final body = res.data as Map<String, dynamic>;
-      final list = (body['data'] as List<dynamic>?) ?? [];
+      debugPrint('[PROFILE] getAddresses status=${res.statusCode} dataType=${res.data?.runtimeType}');
+      final data = res.data;
+      List<dynamic> list;
+      if (data is List) {
+        list = data;
+      } else if (data is Map<String, dynamic>) {
+        list = (data['data'] as List<dynamic>?) ??
+            (data['addresses'] as List<dynamic>?) ??
+            [];
+      } else {
+        list = [];
+      }
       debugPrint('[PROFILE] getAddresses → ${list.length} items');
       return list
           .map((e) => AddressModel.fromJson(e as Map<String, dynamic>))
@@ -56,6 +66,9 @@ class ProfileRepository {
       if (err is OfflineException) return DemoData.addresses;
       if (e.response?.statusCode == 404) return [];
       throw err;
+    } catch (e, stack) {
+      debugPrint('[PROFILE] getAddresses unexpected error: $e\n$stack');
+      rethrow;
     }
   }
 
