@@ -66,9 +66,9 @@ class _AuthInterceptor extends Interceptor {
     // Skip refresh for auth endpoints themselves (avoids loops)
     final path = err.requestOptions.path;
     if (path.contains('/auth/refresh') ||
-        path.contains('/auth/login') ||
-        path.contains('/auth/verify-otp') ||
-        path.contains('/auth/send-otp')) {
+        path.contains('/auth/login-password') ||
+        path.contains('/auth/login-otp') ||
+        path.contains('/auth/verify-otp')) {
       handler.next(err);
       return;
     }
@@ -92,8 +92,8 @@ class _AuthInterceptor extends Interceptor {
         receiveTimeout: const Duration(seconds: 10),
       ));
 
-      debugPrint('[AUTH REFRESH] POST /api/core/auth/refresh');
-      final res = await refreshDio.post('/api/core/auth/refresh', data: {
+      debugPrint('[AUTH REFRESH] POST /api/customer/auth/refresh');
+      final res = await refreshDio.post('/api/customer/auth/refresh', data: {
         'refreshToken': refreshToken,
       });
 
