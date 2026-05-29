@@ -54,21 +54,21 @@ class AuthService {
         throw ValidationException(body['error'] as String? ?? 'Invalid OTP');
       }
 
-      final data = body['data'] as Map<String, dynamic>;
-      final token = (data['token'] ?? data['accessToken']) as String?;
+      // Backend returns a flat response — token and user are top-level keys
+      final token = (body['token'] ?? body['accessToken']) as String?;
       if (token == null) {
-        throw ServerException('No token in verify-OTP response. Keys: ${data.keys.toList()}');
+        throw ServerException('No token in verify-OTP response. Keys: ${body.keys.toList()}');
       }
 
-      final rawUser = data['user'] ?? data['customer'] ?? data;
-      final userJson = rawUser as Map<String, dynamic>;
-      final refreshToken = data['refreshToken'] as String?;
-      // Backend returns isPasswordSet (new field) or hasPassword (legacy)
-      final hasPassword = data['isPasswordSet'] as bool?
-          ?? data['hasPassword'] as bool?
+      final rawUser = body['user'] ?? body['customer'];
+      final userJson = (rawUser as Map<String, dynamic>?) ?? body;
+      final refreshToken = body['refreshToken'] as String?;
+      // isPasswordSet is top-level; hasPassword lives inside the user object
+      final hasPassword = body['isPasswordSet'] as bool?
+          ?? (body['user'] as Map<String, dynamic>?)?['hasPassword'] as bool?
           ?? false;
 
-      final rawBusinesses = data['businesses'];
+      final rawBusinesses = body['businesses'];
       final businesses = rawBusinesses is List ? rawBusinesses : <dynamic>[];
       final businessId = businesses.isNotEmpty
           ? ((businesses[0] as Map<String, dynamic>)['businessId'] as String?) ?? _api.tenantId
@@ -159,13 +159,13 @@ class AuthService {
       if (body['success'] != true) {
         throw ValidationException(body['error'] as String? ?? 'Login failed');
       }
-      final data = body['data'] as Map<String, dynamic>;
-      final token = (data['token'] ?? data['accessToken']) as String?;
+      // Backend returns a flat response — token and user are top-level keys
+      final token = (body['token'] ?? body['accessToken']) as String?;
       if (token == null) throw ServerException('No token in login response');
 
-      final rawUser = data['user'] ?? data['customer'] ?? data;
-      final userJson = rawUser as Map<String, dynamic>;
-      final refreshToken = data['refreshToken'] as String?;
+      final rawUser = body['user'] ?? body['customer'];
+      final userJson = (rawUser as Map<String, dynamic>?) ?? body;
+      final refreshToken = body['refreshToken'] as String?;
 
       await _storeSession(
         token: token,
