@@ -278,14 +278,11 @@ class AuthService {
       if (body['success'] != true) {
         throw ValidationException(body['error'] as String? ?? 'Failed to reset password');
       }
-      // Backend may return a new session after reset — use it if present
-      final data = body['data'] as Map<String, dynamic>?;
-      if (data == null) return null;
-
-      final newToken = (data['token'] ?? data['accessToken']) as String?;
-      final rawUser = data['user'] ?? data['customer'];
+      // Backend returns a flat response — token and user are top-level keys
+      final newToken = (body['token'] ?? body['accessToken']) as String?;
+      final rawUser = body['user'] ?? body['customer'];
       final userJson = rawUser as Map<String, dynamic>?;
-      final refreshToken = data['refreshToken'] as String?;
+      final refreshToken = body['refreshToken'] as String?;
 
       if (newToken != null && userJson != null) {
         await _storeSession(
@@ -379,13 +376,9 @@ class AuthService {
         await _storage.clearTokens();
         return null;
       }
-      final data = body['data'] as Map<String, dynamic>;
-      final userJson = data['user'] as Map<String, dynamic>;
-      final rawBusinesses = data['businesses'];
-      final businesses = rawBusinesses is List ? rawBusinesses : <dynamic>[];
-      final businessId = businesses.isNotEmpty
-          ? (businesses[0] as Map<String, dynamic>)['businessId'] as String? ?? _api.tenantId
-          : _api.tenantId;
+      // /me returns flat — user is top-level, businessId is inside the user object
+      final userJson = body['user'] as Map<String, dynamic>;
+      final businessId = userJson['businessId'] as String? ?? _api.tenantId;
       await _storage.saveUserJson({...userJson, 'businessId': businessId});
       final user = UserModel.fromBackend(userJson, businessId: businessId);
       debugPrint('[AUTH RESTORE] session restored ✓ name=${user.name}');
