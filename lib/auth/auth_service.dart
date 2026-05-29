@@ -94,6 +94,53 @@ class AuthService {
     }
   }
 
+  // ── Role-based password login (delivery + admin apps) ──────────────────────
+
+  Future<UserModel> loginWithPassword({
+    required String email,
+    required String password,
+    required UserRole role,
+  }) async {
+    final segment = role == UserRole.rider ? 'rider'
+        : role == UserRole.admin ? 'admin'
+        : 'customer';
+    final endpoint = '/api/$segment/auth/login-password';
+    final normalizedEmail = email.trim().toLowerCase();
+    debugPrint('[AUTH] POST $endpoint role=${role.name} email=$normalizedEmail');
+    try {
+      final res = await _api.dio.post(endpoint, data: {
+        'email': normalizedEmail,
+        'password': password,
+        'businessId': _api.tenantId,
+      });
+      final body = res.data as Map<String, dynamic>;
+      if (body['success'] != true) {
+        throw ValidationException(body['error'] as String? ?? 'Login failed');
+      }
+      final data = body['data'] as Map<String, dynamic>;
+      final token = (data['token'] ?? data['accessToken']) as String?;
+      if (token == null) throw ServerException('No token in login response');
+
+      final rawUser = data['user'] ?? data['rider'] ?? data['admin'] ?? data;
+      final userJson = rawUser as Map<String, dynamic>;
+      final refreshToken = data['refreshToken'] as String?;
+
+      await _storeSession(
+        token: token,
+        refreshToken: refreshToken,
+        userId: userJson['id'] as String? ?? '',
+        email: normalizedEmail,
+        userJson: userJson,
+        businessId: _api.tenantId,
+      );
+      debugPrint('[AUTH] $segment login: session stored ✓');
+      return UserModel.fromBackend(userJson, businessId: _api.tenantId, hasPassword: true);
+    } on DioException catch (e) {
+      debugPrint('[AUTH] loginWithPassword DioException: status=${e.response?.statusCode}');
+      throw _mapDioError(e);
+    }
+  }
+
   // ── Customer password login ─────────────────────────────────────────────────
 
   Future<UserModel> loginWithEmailPassword({
