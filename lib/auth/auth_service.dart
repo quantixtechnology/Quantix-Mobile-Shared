@@ -444,10 +444,17 @@ class AuthService {
 
   AppException _mapDioError(DioException e) {
     final status = e.response?.statusCode;
+    final rawData = e.response?.data;
+
+    // HTML response means backend gateway/proxy returned an error page (e.g. 404 from Next.js)
+    if (rawData is String && rawData.contains('<!DOCTYPE')) {
+      return ServerException('Service temporarily unavailable. Please try again later.', statusCode: status);
+    }
+
     String message = 'Request failed';
-    if (e.response?.data is Map) {
-      message = (e.response!.data['error'] as String?)
-          ?? (e.response!.data['message'] as String?)
+    if (rawData is Map) {
+      message = (rawData['error'] as String?)
+          ?? (rawData['message'] as String?)
           ?? 'Request failed';
     }
     if (e.type == DioExceptionType.connectionTimeout ||
